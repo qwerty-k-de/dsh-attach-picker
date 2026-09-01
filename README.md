@@ -1,0 +1,65 @@
+# dsh-attach-picker
+
+Adds a **picture button** to the DeepSeek Harness Web composer toolbar. Click it to open the **system file dialog** and pick one or more images — no drag-and-drop or paste needed. The chosen images land in the same draft-image rail that drag-and-drop and paste fill, and send with the message like any other attachment.
+
+> 中文说明见 [README.zh.md](README.zh.md)
+
+## Features
+
+- One-click picture icon in the composer tool row (slot `conversation.input.left`)
+- Native OS file picker, multi-select, filtered to the host's supported image types
+- Honours the host's `imageLimits`: supported formats, max images per message, max bytes per image — with inline error toasts (e.g. `单张图片不能超过 X MB`)
+- Uses the same `conversation.createDraftImages` / `inputActions.addImages` pipeline as drag-and-drop, so no special handling anywhere else
+- Browser-side only; zero dependencies, tiny footprint
+
+## Install
+
+From npm (recommended, prebuilt):
+
+```sh
+dsh plugin --profile web add dsh-attach-picker
+```
+
+From GitHub:
+
+```sh
+dsh plugin --profile web add github:qwerty-k-de/dsh-attach-picker
+```
+
+Restart `dsh web` (or just refresh the page — hot reload usually applies it).
+
+## Usage
+
+1. Open a conversation in DSH Web.
+2. Click the picture button in the composer tool row — the OS file dialog opens.
+3. Pick one or more images. They appear in the draft-image rail.
+4. Send the message; the images are attached like any others.
+
+The button is disabled while a request is in flight.
+
+## How it works
+
+- Client plugin registered via `package.json` → `dsh.client` (`platform: "web"`, `exports["./client"]`).
+- Injects into the composer slot `conversation.input.left` with `order: -50`.
+- On selection: limits come from the host projection `imageLimits` (`mediaTypes`, `maxImagesPerMessage`, `maxImageBytes`); on success it calls `conversation.createDraftImages(files)` then `inputActions.addImages(...)`.
+- The Node side (`lib/index.js`) is intentionally empty — all logic is browser-side.
+
+## Screenshots
+
+Storefronts (e.g. [dsh-market](https://github.com/dsh-market/dsh-market#readme)) show App-Store style screenshots. Declare them in this repo:
+
+```jsonc
+// screenshots.json
+["assets/screenshot-1.png", "assets/screenshot-2.png"]
+```
+
+(1–8 images; paths relative to the file, inside this repo. Without it, storefronts fall back to images found in this README.)
+
+## Requirements
+
+- DSH Web (`dsh web`) with the standard conversation / slots client services — current 0.1.0-rc+ builds.
+- No runtime dependencies.
+
+## License
+
+MIT
