@@ -1,0 +1,5 @@
+# dsh-attach-picker 插件层（bundle patch）。
+# `dsh plugin --profile web add link:<本目录>` 安装后自动生效。
+- insert:
+    - id: attach-picker
+      name: dsh-attach-picker
