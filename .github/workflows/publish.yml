@@ -53,7 +53,7 @@ jobs:
             exit 1
           fi
 
-      - run: node --test test/
+      - run: node --test "test/*.test.mjs"
 
       # NODE_AUTH_TOKEN is deliberately a placeholder: it only satisfies npm's
       # "registry is configured" check and is never sent, because the OIDC path wins.
