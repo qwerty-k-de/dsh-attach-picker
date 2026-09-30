@@ -1,0 +1,5 @@
+# Normalize line endings on commit so shell steps and text artifacts stay LF
+# regardless of the `core.autocrlf` setting of whoever checks the repo out.
+* text=auto eol=lf
+*.png binary
+*.tgz binary

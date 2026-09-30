@@ -7,7 +7,8 @@
 - 输入框工具栏一键图片按钮（挂在 `conversation.input.left` 槽）
 - 原生系统文件选择器，支持多选，自动过滤宿主支持的图片格式
 - 遵守宿主的 `imageLimits` 限制：图片格式、单条消息最大张数、单张大小上限，超限会有内联错误提示（如「一条消息最多 N 张图片」「单张图片不能超过 X MB」）
-- 与拖拽使用同一条 `conversation.createDraftImages` / `inputActions.addImages` 管线，其它地方无需任何特殊处理
+- 与拖拽/粘贴走同一条草稿附件管线：`conversation.createDrafts(sessionId, files)` → `inputActions.addAttachments(ids)`，其它地方无需任何特殊处理
+- 同时兼容 DSH 0.2 与 0.1 两代输入框 API：在渲染时探测宿主提供的能力，哪一代在跑就走哪一代
 - 纯浏览器侧实现，零依赖，体积小
 
 ## 安装
@@ -39,7 +40,11 @@ dsh plugin --profile web add github:qwerty-k-de/dsh-attach-picker
 
 - 通过 `package.json` 的 `dsh.client`（`platform: "web"`，`exports["./client"]`）注册为客户端插件。
 - 注入到输入框槽 `conversation.input.left`，`order: -50`。
-- 选中文件后：先从宿主投影 `imageLimits`（`mediaTypes`、`maxImagesPerMessage`、`maxImageBytes`）读取限制；成功后调用 `conversation.createDraftImages(files)` 再 `inputActions.addImages(...)`。
+- 选中文件后：先从宿主投影 `imageLimits`（`mediaTypes`、`maxImagesPerMessage`、`maxImageBytes`）读取限制，本地先做一次格式/张数/单张大小校验；通过后交给宿主自己的录入管线：
+  - DSH 0.2（`dsh` 0.2.x，公开契约）：`conversation.createDrafts(sessionId, files)` 生成草稿描述符，再用 `inputActions.addAttachments(ids)` 入栏；`addAttachments` 返回 `false`（adjudicating/submitting 阶段）时用 `conversation.releaseDraftAttachments(drafts)` 回收，避免泄漏；
+  - 兜底：父级 composer 条目注入的 `addFiles(files, directories)`（宿主内部通道，仅在该对动词缺失时使用）；
+  - DSH 0.1：回退到 `conversation.createDraftImages(files)` + `inputActions.addImages(...)`。
+- 最外层元素带 `data-dsh-attach-picker="<版本>:<管线>"` 标记，便于在 DOM 里确认当前生效的是哪条路径。
 - Node 侧（`lib/index.js`）有意留空——全部逻辑在浏览器端。
 
 ## 截图
@@ -55,8 +60,13 @@ dsh plugin --profile web add github:qwerty-k-de/dsh-attach-picker
 
 ## 要求
 
-- DSH Web（`dsh web`）需带标准 conversation / slots 客户端服务——当前 0.1.0-rc+ 版本均可。
+- DSH Web（`dsh web`）需带标准 conversation / slots 客户端服务。
+- 0.1.x 与 0.2.x 均可用；0.1.1 起开始适配 0.2 的附件 API。
 - 无运行时依赖。
+
+## 更新日志
+
+见 [CHANGELOG.md](CHANGELOG.md)。
 
 ## 许可
 

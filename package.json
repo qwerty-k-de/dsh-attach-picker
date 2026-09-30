@@ -1,6 +1,6 @@
 {
   "name": "dsh-attach-picker",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "description": "DSH Web 输入框工具栏图片按钮：点击用系统文件选择器挑图片，不用拖拽。Toolbar button that opens the OS file picker to attach images to the DSH Web composer — no drag-and-drop needed.",
   "type": "module",
   "license": "MIT",

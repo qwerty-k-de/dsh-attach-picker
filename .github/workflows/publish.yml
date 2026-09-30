@@ -1,0 +1,78 @@
+# Publish on a version tag, authenticated by npm Trusted Publishing (OIDC).
+#
+# No long-lived npm token is involved: GitHub mints a short-lived OIDC identity,
+# npm verifies it against the Trusted Publisher configured for this package, and
+# the publish carries a provenance attestation.
+#
+# Prerequisite (one-time, on npmjs.com): the package's Trusted Publisher must name
+#   Organization or user: qwerty-k-de
+#   Repository:            dsh-attach-picker
+#   Workflow filename:     publish.yml
+#   Environment:           (leave empty)
+#
+# Release flow: bump "version" in package.json + add a CHANGELOG entry, then
+#   git tag v0.1.2 && git push origin v0.1.2
+name: publish
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: npm-publish-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # Required: lets the job request the OIDC token npm exchanges for publish rights.
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          registry-url: "https://registry.npmjs.org"
+
+      # Trusted Publishing needs npm >= 11.5.1; the bundled CLI can be older.
+      - name: Use the latest npm
+        run: npm install -g npm@latest
+
+      - name: Check the tag matches package.json
+        run: |
+          pkg="v$(node -p "require('./package.json').version")"
+          if [ "$pkg" != "$GITHUB_REF_NAME" ]; then
+            echo "tag $GITHUB_REF_NAME does not match package.json ($pkg)" >&2
+            exit 1
+          fi
+
+      - run: node --test test/
+
+      # NODE_AUTH_TOKEN is deliberately a placeholder: it only satisfies npm's
+      # "registry is configured" check and is never sent, because the OIDC path wins.
+      - name: Publish
+        run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: "oidc-via-trusted-publishing"
+
+      - name: Verify the registry picked the version up
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          for attempt in 1 2 3 4 5 6; do
+            latest="$(npm view dsh-attach-picker dist-tags.latest 2>/dev/null || true)"
+            echo "attempt $attempt: latest=$latest"
+            if [ "$latest" = "$version" ]; then
+              echo "published dsh-attach-picker@$version"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "registry did not report $version in time" >&2
+          exit 1
