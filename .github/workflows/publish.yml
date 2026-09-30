@@ -62,17 +62,21 @@ jobs:
         env:
           NODE_AUTH_TOKEN: "oidc-via-trusted-publishing"
 
-      - name: Verify the registry picked the version up
+      # npm's own "+ dsh-attach-picker@x.y.z" line above is the authoritative
+      # success signal; this step only waits for the registry CDN to catch up and
+      # must not fail the release when propagation is merely slow (it has taken
+      # ~3 minutes in practice, and the packument is cached at the edge).
+      - name: Wait for the registry to report the version
         run: |
           version="$(node -p "require('./package.json').version")"
-          for attempt in 1 2 3 4 5 6; do
+          for attempt in $(seq 1 18); do
             latest="$(npm view dsh-attach-picker dist-tags.latest 2>/dev/null || true)"
             echo "attempt $attempt: latest=$latest"
             if [ "$latest" = "$version" ]; then
-              echo "published dsh-attach-picker@$version"
+              echo "registry reports dsh-attach-picker@$version"
               exit 0
             fi
             sleep 10
           done
-          echo "registry did not report $version in time" >&2
-          exit 1
+          echo "::warning::registry has not reported $version after ~3 minutes; the publish itself succeeded, check https://www.npmjs.com/package/dsh-attach-picker manually"
+
